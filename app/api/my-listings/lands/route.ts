@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import LandListing from "@/models/LandListing";
+import LandListing from "@/models/LandListings";
 
 export async function GET(request: NextRequest) {
   try {

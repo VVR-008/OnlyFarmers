@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import LivestockListing from "@/models/LivestockListing";
+import LivestockListing from "@/models/LivestockListings";
 import User from "@/models/User";
 import { z } from "zod";
 
@@ -47,9 +47,9 @@ const livestockSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = request.nextUrl;
     await dbConnect();
     
-    const { searchParams } = new URL(request.url);
     const query = querySchema.parse(Object.fromEntries(searchParams));
 
     // Individual listing request

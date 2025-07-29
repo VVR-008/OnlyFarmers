@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import CropListing from "@/models/CropListing";
+import CropListing from "@/models/CropListings"; // ✅ Fixed import
 import User from "@/models/User";
 import { z } from "zod";
 
@@ -13,7 +13,7 @@ const querySchema = z.object({
   status: z.string().optional(),
   page: z.string().optional(),
   limit: z.string().optional(),
-  id: z.string().optional(), // For individual listing operations
+  id: z.string().optional(),
 });
 
 const cropListingSchema = z.object({
@@ -51,21 +51,31 @@ const cropListingSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = request.nextUrl;
     await dbConnect();
     
-    const { searchParams } = new URL(request.url);
     const query = querySchema.parse(Object.fromEntries(searchParams));
+
+    console.log("🔍 Crops API - Query params:", query);
 
     // Check if this is a request for a specific listing
     if (query.id) {
+      console.log("📦 Fetching single crop with ID:", query.id);
+      
       const listing = await CropListing.findById(query.id)
         .populate("farmer", "name email phone profile");
 
       if (!listing) {
-        return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+        return NextResponse.json({ error: "Crop listing not found" }, { status: 404 });
       }
 
-      return NextResponse.json({ listing });
+      console.log("✅ Found crop listing:", listing.title);
+      
+      // ✅ Return both keys for compatibility with order creation
+      return NextResponse.json({ 
+        listing, 
+        crop: listing  // Include both for compatibility
+      });
     }
 
     // Otherwise, return list of listings
@@ -92,6 +102,8 @@ export async function GET(request: NextRequest) {
       if (query.maxPrice) filter.price.$lte = Number.parseInt(query.maxPrice);
     }
 
+    console.log("🔍 Applying filter:", filter);
+
     const listings = await CropListing.find(filter)
       .populate("farmer", "name email phone")
       .sort({ createdAt: -1 })
@@ -100,8 +112,11 @@ export async function GET(request: NextRequest) {
 
     const total = await CropListing.countDocuments(filter);
 
+    console.log(`✅ Found ${listings.length} crop listings (${total} total)`);
+
     return NextResponse.json({
       listings,
+      crops: listings, // ✅ Include both keys for compatibility
       pagination: {
         page,
         limit,
@@ -110,8 +125,8 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching crop listings:", error);
-    return NextResponse.json({ error: "Failed to fetch listings" }, { status: 500 });
+    console.error("Error fetching crops:", error);
+    return NextResponse.json({ success: false, error: "Failed to fetch crops" }, { status: 500 });
   }
 }
 
@@ -119,6 +134,8 @@ export async function POST(request: NextRequest) {
   try {
     await dbConnect();
     const body = await request.json();
+
+    console.log("📝 Creating new crop listing:", body.title);
 
     if (body.farmer) {
       const farmer = await User.findById(body.farmer);
@@ -128,6 +145,13 @@ export async function POST(request: NextRequest) {
           details: ["Farmer not found"]
         }, { status: 400 });
       }
+      
+      if (farmer.role !== "farmer") {
+        return NextResponse.json({ 
+          error: "Invalid user role",
+          details: ["Only farmers can create crop listings"]
+        }, { status: 400 });
+      }
     }
 
     const validatedData = cropListingSchema.parse(body);
@@ -135,9 +159,11 @@ export async function POST(request: NextRequest) {
     await listing.save();
     await listing.populate("farmer", "name email phone");
 
+    console.log("✅ Created crop listing:", listing._id);
+
     return NextResponse.json({ listing }, { status: 201 });
   } catch (error: any) {
-    console.error("Error creating crop listing:", error);
+    console.error("❌ Error creating crop listing:", error);
     
     if (error instanceof z.ZodError) {
       return NextResponse.json({ 
@@ -162,7 +188,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ 
-      error: "Failed to create listing",
+      error: "Failed to create crop listing",
       details: [error.message]
     }, { status: 500 });
   }
@@ -188,7 +214,7 @@ export async function PUT(request: NextRequest) {
     const existingListing = await CropListing.findById(id);
     
     if (!existingListing) {
-      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+      return NextResponse.json({ error: "Crop listing not found" }, { status: 404 });
     }
 
     if (existingListing.farmer.toString() !== userId) {
@@ -203,10 +229,12 @@ export async function PUT(request: NextRequest) {
       { new: true, runValidators: true }
     ).populate("farmer", "name email phone");
 
+    console.log("✅ Updated crop listing:", updatedListing._id);
+
     return NextResponse.json({ listing: updatedListing });
   } catch (error) {
-    console.error("Error updating crop listing:", error);
-    return NextResponse.json({ error: "Failed to update listing" }, { status: 500 });
+    console.error("❌ Error updating crop listing:", error);
+    return NextResponse.json({ error: "Failed to update crop listing" }, { status: 500 });
   }
 }
 
@@ -229,7 +257,7 @@ export async function DELETE(request: NextRequest) {
     const listing = await CropListing.findById(id);
     
     if (!listing) {
-      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+      return NextResponse.json({ error: "Crop listing not found" }, { status: 404 });
     }
 
     if (listing.farmer.toString() !== userId) {
@@ -239,9 +267,12 @@ export async function DELETE(request: NextRequest) {
     }
 
     await CropListing.findByIdAndDelete(id);
-    return NextResponse.json({ message: "Listing deleted successfully" });
+    
+    console.log("✅ Deleted crop listing:", id);
+    
+    return NextResponse.json({ message: "Crop listing deleted successfully" });
   } catch (error) {
-    console.error("Error deleting crop listing:", error);
-    return NextResponse.json({ error: "Failed to delete listing" }, { status: 500 });
+    console.error("❌ Error deleting crop listing:", error);
+    return NextResponse.json({ error: "Failed to delete crop listing" }, { status: 500 });
   }
 }

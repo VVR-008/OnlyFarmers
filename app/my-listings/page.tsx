@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import Navbar from "@/components/Navbar";
 import {
   TrashIcon,
   PencilIcon,
@@ -142,12 +143,10 @@ export default function MyListingsPage() {
       setCounts(data.counts || { crops: 0, livestocks: 0, lands: 0, total: 0 });
     } catch (error) {
       console.error("Error fetching counts:", error);
-      // Set default counts on error
       setCounts({ crops: 0, livestocks: 0, lands: 0, total: 0 });
     }
   };
 
-  // ✅ UPDATED: Delete function using query parameters instead of dynamic routes
   const handleDelete = async (listingId: string, type: string) => {
     if (!confirm("Are you sure you want to delete this listing? This action cannot be undone.")) {
       return;
@@ -155,18 +154,17 @@ export default function MyListingsPage() {
 
     setDeleting(listingId);
     try {
-      // ✅ Updated to use query parameters instead of dynamic routes
       const response = await fetch(`/api/listings/${type}?id=${listingId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": user?.id || "", // Security verification
+          "x-user-id": user?.id || "",
         },
       });
 
       if (response.ok) {
         setListings(prev => prev.filter(listing => listing._id !== listingId));
-        fetchListingCounts(); // Refresh counts
+        fetchListingCounts();
         console.log("✅ Listing deleted successfully");
       } else {
         const error = await response.json();
@@ -222,7 +220,6 @@ export default function MyListingsPage() {
             >
               <EyeIcon className="h-4 w-4" />
             </Link>
-            
             <button
               onClick={() => handleDelete(listing._id, "crops")}
               disabled={deleting === listing._id}
@@ -270,7 +267,6 @@ export default function MyListingsPage() {
             >
               <EyeIcon className="h-4 w-4" />
             </Link>
-           
             <button
               onClick={() => handleDelete(listing._id, "livestocks")}
               disabled={deleting === listing._id}
@@ -322,7 +318,6 @@ export default function MyListingsPage() {
             >
               <EyeIcon className="h-4 w-4" />
             </Link>
-            
             <button
               onClick={() => handleDelete(listing._id, "lands")}
               disabled={deleting === listing._id}
@@ -355,123 +350,132 @@ export default function MyListingsPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-10 w-10 border-b-2 border-green-600 rounded-full animate-spin" />
-      </div>
+      <>
+        <Navbar />
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="h-10 w-10 border-b-2 border-green-600 rounded-full animate-spin" />
+        </div>
+      </>
     );
   }
 
   if (user.role !== "farmer") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-          <p className="text-gray-600 mb-4">Only farmers can access their listings.</p>
-          <Link href="/login" className="text-green-700 underline">
-            Login as Farmer
-          </Link>
+      <>
+        <Navbar />
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
+            <p className="text-gray-600 mb-4">Only farmers can access their listings.</p>
+            <Link href="/login" className="text-green-700 underline">
+              Login as Farmer
+            </Link>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Listings</h1>
-            <p className="text-gray-600">Manage your crops, livestock, and land listings</p>
-            {error && (
-              <p className="text-red-600 text-sm mt-1">⚠️ {error}</p>
-            )}
-          </div>
-          <Link
-            href="/listings/create"
-            className="inline-flex items-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Add New Listing
-          </Link>
-        </div>
-
-        {/* Tabs with counts */}
-        <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
-          <button
-            onClick={() => setActiveTab("crops")}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeTab === "crops"
-                ? "bg-white text-green-700 shadow"
-                : "text-gray-600 hover:text-gray-700"
-            }`}
-          >
-            🌾 Crops ({counts.crops})
-          </button>
-          <button
-            onClick={() => setActiveTab("livestocks")}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeTab === "livestocks"
-                ? "bg-white text-green-700 shadow"
-                : "text-gray-600 hover:text-gray-700"
-            }`}
-          >
-            🐄 Livestock ({counts.livestocks})
-          </button>
-          <button
-            onClick={() => setActiveTab("lands")}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeTab === "lands"
-                ? "bg-white text-green-700 shadow"
-                : "text-gray-600 hover:text-gray-700"
-            }`}
-          >
-            🏞️ Land ({counts.lands})
-          </button>
-        </div>
-
-        {/* Loading State */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-lg shadow animate-pulse">
-                <div className="aspect-video bg-gray-200"></div>
-                <div className="p-4 space-y-3">
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                  <div className="flex justify-between">
-                    <div className="h-3 bg-gray-200 rounded w-1/4"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/4"></div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : listings.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">
-              {activeTab === "crops" ? "🌾" : activeTab === "livestocks" ? "🐄" : "🏞️"}
+    <>
+      <Navbar />
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">My Listings</h1>
+              <p className="text-gray-600">Manage your crops, livestock, and land listings</p>
+              {error && (
+                <p className="text-red-600 text-sm mt-1">⚠️ {error}</p>
+              )}
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No {activeTab} listings yet
-            </h3>
-            <p className="text-gray-500 mb-6">
-              Create your first {activeTab.slice(0, -1)} listing to start selling
-            </p>
             <Link
               href="/listings/create"
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="inline-flex items-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
             >
               <PlusIcon className="h-5 w-5 mr-2" />
-              Create {activeTab.slice(0, -1)} listing
+              Add New Listing
             </Link>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {listings.map(renderCard)}
+
+          {/* Tabs with counts */}
+          <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => setActiveTab("crops")}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                activeTab === "crops"
+                  ? "bg-white text-green-700 shadow"
+                  : "text-gray-600 hover:text-gray-700"
+              }`}
+            >
+              🌾 Crops ({counts.crops})
+            </button>
+            <button
+              onClick={() => setActiveTab("livestocks")}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                activeTab === "livestocks"
+                  ? "bg-white text-green-700 shadow"
+                  : "text-gray-600 hover:text-gray-700"
+              }`}
+            >
+              🐄 Livestock ({counts.livestocks})
+            </button>
+            <button
+              onClick={() => setActiveTab("lands")}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                activeTab === "lands"
+                  ? "bg-white text-green-700 shadow"
+                  : "text-gray-600 hover:text-gray-700"
+              }`}
+            >
+              🏞️ Land ({counts.lands})
+            </button>
           </div>
-        )}
+
+          {/* Loading State */}
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-lg shadow animate-pulse">
+                  <div className="aspect-video bg-gray-200"></div>
+                  <div className="p-4 space-y-3">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    <div className="flex justify-between">
+                      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : listings.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">
+                {activeTab === "crops" ? "🌾" : activeTab === "livestocks" ? "🐄" : "🏞️"}
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No {activeTab} listings yet
+              </h3>
+              <p className="text-gray-500 mb-6">
+                Create your first {activeTab.slice(0, -1)} listing to start selling
+              </p>
+              <Link
+                href="/listings/create"
+                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
+                Create {activeTab.slice(0, -1)} listing
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {listings.map(renderCard)}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

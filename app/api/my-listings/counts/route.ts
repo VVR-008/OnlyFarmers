@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import CropListing from "@/models/CropListing";
-import LivestockListing from "@/models/LivestockListing";
-import LandListing from "@/models/LandListing";
+import CropListing from "@/models/CropListings";
+import LivestockListing from "@/models/LivestockListings";
+import LandListing from "@/models/LandListings";
 
 export async function GET(request: NextRequest) {
   try {

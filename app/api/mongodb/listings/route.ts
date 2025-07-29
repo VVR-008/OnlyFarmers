@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getDatabase } from "@/lib/mongodb/connection"
 import { ObjectId } from "mongodb"
 import type { CropListing } from "@/lib/mongodb/schemas"
 
@@ -18,7 +17,7 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get("sortBy") || "createdAt"
     const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1
 
-    const db = await getDatabase()
+    const db = await connectToDatabase()
     const collection = db.collection("cropListings")
 
     // Build aggregation pipeline

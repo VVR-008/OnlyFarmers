@@ -1,17 +1,44 @@
-//app/
+"use client";
 
-import { notFound } from "next/navigation";
-import dbConnect from "@/lib/db";
-import LandListing from "@/models/LandListing";
-import { CurrencyRupeeIcon, MapPinIcon, UserIcon } from "@heroicons/react/24/outline";
+import { useState, useEffect } from "react";
+import { notFound, useRouter } from "next/navigation";
+import { CurrencyRupeeIcon, MapPinIcon, UserIcon, TrashIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 
-export default async function LandDetailPage({ params }: { params: { id: string } }) {
-  await dbConnect();
-  // Lean mode so we can access fields cleanly
-  const land = await LandListing.findById(params.id)
-    .populate("seller", "name email phone")
-    .lean();
+export default function LandDetailPage({ params }: { params: { id: string } }) {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [land, setLand] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    fetchLandData();
+  }, [params.id]);
+
+  const fetchLandData = async () => {
+    try {
+      const response = await fetch(`/api/listings/lands?id=${params.id}`);
+      if (!response.ok) {
+        throw new Error('Land not found');
+      }
+      const data = await response.json();
+      setLand(data.listing);
+    } catch (error) {
+      console.error('Error fetching land:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="h-10 w-10 border-b-2 border-green-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!land) return notFound();
 
@@ -24,7 +51,11 @@ export default async function LandDetailPage({ params }: { params: { id: string 
       default: return unit;
     }
   };
-
+  const isOwner = user?.id && land.seller && (
+    user.id === land.seller._id || 
+    user.id === land.seller || 
+    (typeof land.seller === 'object' && user.id === land.seller.id)
+  );
   const readableStatus = (status: string) => {
     if (status === "available") return "Available";
     if (status === "under_offer") return "Under Offer";
@@ -32,10 +63,55 @@ export default async function LandDetailPage({ params }: { params: { id: string 
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this listing? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/listings/lands?id=${params.id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": user?.id || "",
+        },
+      });
+
+      if (response.ok) {
+        alert("Listing deleted successfully!");
+        router.push("/my-listings");
+      } else {
+        const error = await response.json();
+        alert(`Failed to delete listing: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error("Error deleting listing:", error);
+      alert("Failed to delete listing. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="bg-gray-50 min-h-screen pb-12">
       <div className="max-w-4xl mx-auto px-4 pt-8">
-        <Link href="/listings?type=lands" className="text-green-700 hover:underline">&larr; Back to Listings</Link>
+        <div className="flex items-center justify-between mb-6">
+          <Link href="/my-listings?type=lands" className="text-green-700 hover:underline">&larr; Back to Listings</Link>
+          
+          {isOwner && (
+            <div className="flex gap-2">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                <TrashIcon className="h-4 w-4" />
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          )}
+        </div>
         <div className="mt-6 bg-white shadow rounded-lg overflow-hidden">
           {land.images && land.images.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
@@ -120,9 +196,10 @@ export default async function LandDetailPage({ params }: { params: { id: string 
 
             <div className="mt-8 flex gap-4">
               <Link href="/listings?type=lands" className="bg-gray-100 text-gray-700 px-4 py-2 rounded shadow hover:bg-gray-200 font-medium">Back to All Land</Link>
-              {land.status === "available" && (
+
+              {land.status === "available" && !isOwner && (
                 <Link
-                  href={`/orders/create?listing=${land._id}`}
+                  href={`/orders/create?listing=${land._id}&type=land`}
                   className="bg-green-600 text-white px-6 py-2 rounded shadow hover:bg-green-700 font-bold"
                 >
                   Express Interest / Contact Seller

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import CropListing from "@/models/CropListing";
+import CropListing from "@/models/CropListings";
 
 // Replace this with your real server-side auth/session handler!
 export async function GET(request: NextRequest) {

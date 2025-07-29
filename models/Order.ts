@@ -1,64 +1,71 @@
-import mongoose, { type Document, Schema } from "mongoose"
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface IOrder extends Document {
-  cropListing: mongoose.Types.ObjectId
-  buyer: mongoose.Types.ObjectId
-  farmer: mongoose.Types.ObjectId
-  quantity: number
-  totalPrice: number
-  status: "pending" | "accepted" | "rejected" | "completed" | "cancelled"
-  paymentStatus: "pending" | "paid" | "failed"
-  createdAt: Date
-  updatedAt: Date
+  _id: string;
+  buyer: mongoose.Types.ObjectId;
+  seller: mongoose.Types.ObjectId;
+  listing: mongoose.Types.ObjectId;
+  listingType: "crop" | "livestock" | "land";
+  
+  // Order details
+  quantity?: number; // For crops/livestock
+  totalPrice: number;
+  message: string;
+  
+  // Status tracking
+  status: "pending" | "accepted" | "rejected" | "completed" | "cancelled";
+  
+  // Communication
+  buyerContact: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
+  respondedAt?: Date;
+  completedAt?: Date;
 }
 
-const OrderSchema = new Schema<IOrder>(
-  {
-    cropListing: {
-      type: Schema.Types.ObjectId,
-      ref: "CropListing",
-      required: true,
-    },
-    buyer: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    farmer: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    quantity: {
-      type: Number,
-      required: true,
-      min: [1, "Quantity must be at least 1"],
-    },
-    totalPrice: {
-      type: Number,
-      required: true,
-      min: [0, "Total price cannot be negative"],
-    },
-    status: {
-      type: String,
-      enum: ["pending", "accepted", "rejected", "completed", "cancelled"],
-      default: "pending",
-    },
-    paymentStatus: {
-      type: String,
-      enum: ["pending", "paid", "failed"],
-      default: "pending",
-    },
+const orderSchema = new Schema<IOrder>({
+  buyer: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  seller: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  listing: { type: Schema.Types.ObjectId, required: true, refPath: 'listingModel' },
+  listingType: { 
+    type: String, 
+    enum: ["crop", "livestock", "land"], 
+    required: true 
   },
-  {
-    timestamps: true,
+  
+  quantity: { type: Number, min: 1 },
+  totalPrice: { type: Number, required: true, min: 0 },
+  message: { type: String, required: true, maxlength: 1000 },
+  
+  status: { 
+    type: String, 
+    enum: ["pending", "accepted", "rejected", "completed", "cancelled"],
+    default: "pending" 
   },
-)
+  
+  buyerContact: {
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+    phone: { type: String, required: true },
+  },
+  
+  respondedAt: Date,
+  completedAt: Date,
+}, {
+  timestamps: true,
+});
 
-// Indexes
-OrderSchema.index({ buyer: 1 })
-OrderSchema.index({ farmer: 1 })
-OrderSchema.index({ status: 1 })
-OrderSchema.index({ createdAt: -1 })
+// Virtual for listing model
+orderSchema.virtual('listingModel').get(function() {
+  if (this.listingType === 'crop') return 'CropListing';
+  if (this.listingType === 'livestock') return 'LivestockListing';
+  if (this.listingType === 'land') return 'LandListing';
+});
 
-export default mongoose.models.Order || mongoose.model<IOrder>("Order", OrderSchema)
+export default mongoose.models.Order || mongoose.model<IOrder>("Order", orderSchema);

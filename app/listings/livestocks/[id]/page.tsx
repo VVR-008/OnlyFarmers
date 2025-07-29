@@ -101,8 +101,8 @@ export default function LivestockDetailPage({ params }: { params: { id: string }
     <div className="bg-gray-50 min-h-screen pb-12">
       <div className="max-w-4xl mx-auto px-4 pt-8">
         <div className="flex items-center justify-between mb-6">
-          {/* ✅ FIXED: Use correct URL (livestock not livestocks) */}
-          <Link href="/listings?type=livestock" className="text-green-700 hover:underline">
+          {/* ✅ FIXED: Use correct URL (livestocks plural) */}
+          <Link href="/my-listings?type=livestocks" className="text-green-700 hover:underline">
             ← Back to Livestock
           </Link>
           
@@ -241,9 +241,9 @@ export default function LivestockDetailPage({ params }: { params: { id: string }
             )}
 
             <div className="mt-8 flex gap-4">
-              {/* ✅ FIXED: Use correct URL (livestock not livestocks) */}
+              {/* ✅ FIXED: Use correct URL (livestocks plural) */}
               <Link 
-                href="/listings?type=livestock" 
+                href="/listings?type=livestocks" 
                 className="bg-gray-100 text-gray-700 px-4 py-2 rounded shadow hover:bg-gray-200 font-medium"
               >
                 Back to Livestock

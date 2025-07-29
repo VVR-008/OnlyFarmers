@@ -3,13 +3,14 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json() as
-      | { messages: Array<{ role: string; content: string }> }
-      | undefined;
+    const { searchParams } = req.nextUrl;
+    const messagesParam = searchParams.get("messages");
 
-    if (!messages) {
+    if (!messagesParam) {
       return NextResponse.json({ error: "No messages provided" }, { status: 400 });
     }
+
+    const messages = JSON.parse(messagesParam) as Array<{ role: string; content: string }>;
 
     // IMPORTANT: Use the latest Gemini model!
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -30,9 +31,8 @@ export async function POST(req: NextRequest) {
     const responseText = result.response.text();
 
     return NextResponse.json({ text: responseText });
-  } catch (err: any) {
-    // Optionally, send more error details in development
-    console.error("[GEMINI API ERROR]", err);
-    return NextResponse.json({ error: "Failed to connect to Gemini." }, { status: 500 });
+  } catch (error) {
+    console.error("Error in Gemini POST:", error);
+    return NextResponse.json({ success: false, error: "Failed to process Gemini request" }, { status: 500 });
   }
 }

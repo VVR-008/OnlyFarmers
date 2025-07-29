@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import CropListing from "@/models/CropListing";
+import CropListing from "@/models/CropListings";
 
 export async function GET(request: NextRequest) {
   try {

@@ -1,115 +1,115 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import CropListing from "@/models/CropListing";
-import LivestockListing from "@/models/LivestockListing";
-import LandListing from "@/models/LandListing";
 import Order from "@/models/Order";
-import mongoose from "mongoose";
+import CropListing from "@/models/CropListings";
+import LivestockListing from "@/models/LivestockListings";
+import LandListing from "@/models/LandListings";
 
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
-
-    const url = new URL(request.url);
-    const farmerId = url.searchParams.get("farmerId");
+    
+    const { searchParams } = new URL(request.url);
+    const farmerId = searchParams.get("farmerId");
     
     if (!farmerId) {
       return NextResponse.json({ error: "Farmer ID is required" }, { status: 400 });
     }
 
-    // Validate ObjectId
-    if (!mongoose.Types.ObjectId.isValid(farmerId)) {
-      return NextResponse.json({ error: "Invalid farmer ID" }, { status: 400 });
+    console.log("🔍 Fetching dashboard stats for farmer:", farmerId);
+
+    // Fetch all data in parallel
+    const [
+      totalOrders,
+      acceptedOrders,
+      completedOrders,
+      cropListings,
+      livestockListings,
+      landListings,
+      recentOrders
+    ] = await Promise.all([
+      // Total orders received by this farmer
+      Order.countDocuments({ seller: farmerId }),
+      
+      // Accepted orders for revenue calculation
+      Order.find({ seller: farmerId, status: "accepted" }),
+      
+      // Completed orders
+      Order.countDocuments({ seller: farmerId, status: "completed" }),
+      
+      // Active listings counts
+      CropListing.find({ farmer: farmerId, status: "available" }),
+      LivestockListing.find({ farmer: farmerId, status: "available" }),
+      LandListing.find({ seller: farmerId, status: "available" }),
+      
+      // Recent orders for monthly data
+      Order.find({ seller: farmerId })
+        .populate("listing")
+        .sort({ createdAt: -1 })
+        .limit(50)
+    ]);
+
+    // Calculate total revenue from accepted/completed orders
+    const totalRevenue = acceptedOrders.reduce((sum, order) => sum + (order.totalPrice || 0), 0);
+
+    // Create listing breakdown
+    const listingBreakdown = [];
+    if (cropListings.length > 0) {
+      listingBreakdown.push({ name: "Crops", value: cropListings.length });
+    }
+    if (livestockListings.length > 0) {
+      listingBreakdown.push({ name: "Livestocks", value: livestockListings.length });
+    }
+    if (landListings.length > 0) {
+      listingBreakdown.push({ name: "Lands", value: landListings.length });
     }
 
-    // Get listing counts by type
-    const [cropCount, livestockCount, landCount] = await Promise.all([
-      CropListing.countDocuments({ farmer: farmerId, status: "available" }),
-      LivestockListing.countDocuments({ farmer: farmerId, status: "available" }),
-      LandListing.countDocuments({ seller: farmerId, status: "available" }),
-    ]);
+    // Generate monthly revenue data (last 6 months)
+    const monthlyRevenue = [];
+    const currentDate = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+      const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+      
+      const monthOrders = recentOrders.filter(order => {
+        const orderDate = new Date(order.createdAt);
+        return orderDate >= monthStart && orderDate <= monthEnd;
+      });
+      
+      const monthRevenue = monthOrders
+        .filter(order => order.status === "accepted" || order.status === "completed")
+        .reduce((sum, order) => sum + (order.totalPrice || 0), 0);
+      
+      monthlyRevenue.push({
+        month: date.toLocaleDateString('en-US', { month: 'short' }),
+        revenue: monthRevenue,
+        orders: monthOrders.length
+      });
+    }
 
-    // Get total revenue from orders
-    const revenueData = await Order.aggregate([
-      {
-        $match: {
-          seller: new mongoose.Types.ObjectId(farmerId),
-          status: { $in: ["completed", "accepted"] }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: "$totalPrice" },
-          totalOrders: { $sum: 1 }
-        }
-      }
-    ]);
-
-    const revenue = revenueData[0] || { totalRevenue: 0, totalOrders: 0 };
-
-    // Get monthly revenue for chart
-    const monthlyRevenue = await Order.aggregate([
-      {
-        $match: {
-          seller: new mongoose.Types.ObjectId(farmerId),
-          status: { $in: ["completed", "accepted"] },
-          createdAt: {
-            $gte: new Date(new Date().getFullYear(), 0, 1), // Start of current year
-          }
-        }
-      },
-      {
-        $group: {
-          _id: { 
-            month: { $month: "$createdAt" },
-            year: { $year: "$createdAt" }
-          },
-          revenue: { $sum: "$totalPrice" },
-          orders: { $sum: 1 }
-        }
-      },
-      {
-        $sort: { "_id.month": 1 }
-      }
-    ]);
-
-    // Format monthly data
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const formattedMonthlyData = months.map((month, index) => {
-      const monthData = monthlyRevenue.find(item => item._id.month === index + 1);
-      return {
-        month,
-        revenue: monthData?.revenue || 0,
-        orders: monthData?.orders || 0
-      };
-    });
-
-    // Get total views (simulate for now, you can implement actual view tracking)
-    const totalViews = await CropListing.aggregate([
-      { $match: { farmer: new mongoose.Types.ObjectId(farmerId) } },
-      { $group: { _id: null, views: { $sum: { $ifNull: ["$views", 0] } } } }
-    ]);
+    // Calculate total views (mock data for now - you can implement view tracking later)
+    const totalViews = (cropListings.length + livestockListings.length + landListings.length) * 15;
 
     const stats = {
-      totalRevenue: revenue.totalRevenue,
-      totalOrders: revenue.totalOrders,
-      activeListings: cropCount + livestockCount + landCount,
-      totalViews: totalViews[0]?.views || Math.floor(Math.random() * 3000) + 500, // Simulate until you implement view tracking
+      totalRevenue,
+      totalOrders,
+      activeListings: cropListings.length + livestockListings.length + landListings.length,
+      totalViews,
     };
 
-    const listingBreakdown = [];
-    if (cropCount > 0) listingBreakdown.push({ name: 'Crops', value: cropCount });
-    if (livestockCount > 0) listingBreakdown.push({ name: 'Livestock', value: livestockCount });
-    if (landCount > 0) listingBreakdown.push({ name: 'Land', value: landCount });
+    console.log("✅ Dashboard stats calculated:", stats);
+    console.log("📊 Listing breakdown:", listingBreakdown);
 
     return NextResponse.json({
       stats,
       listingBreakdown,
-      monthlyRevenue: formattedMonthlyData,
+      monthlyRevenue,
     });
+
   } catch (error) {
-    console.error("Error fetching dashboard stats:", error);
-    return NextResponse.json({ error: "Failed to fetch dashboard stats" }, { status: 500 });
+    console.error("❌ Error fetching dashboard stats:", error);
+    return NextResponse.json({ error: "Failed to fetch dashboard data" }, { status: 500 });
   }
 }
