@@ -3,13 +3,13 @@ import dbConnect from "@/lib/db";
 import CropListing from "@/models/CropListings";
 import LivestockListing from "@/models/LivestockListings";
 import LandListing from "@/models/LandListings";
-
+export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
     
     const { searchParams } = new URL(request.url);
-    const farmerId = searchParams.get("farmer"); // ✅ Back to simple "farmer"
+    const farmerId = request.nextUrl.searchParams.get("farmer");
     
     console.log("📊 Fetching counts for farmer:", farmerId);
     

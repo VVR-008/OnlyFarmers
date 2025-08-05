@@ -11,9 +11,13 @@ import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
+  MapPinIcon,
+  CameraIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { CurrencyRupeeIcon } from "@heroicons/react/24/solid";
 import { useRouter } from "next/navigation";
+import LocationPicker from "@/components/ui/location-picker";
 
 // Enums for all listing types
 const CROP_CATEGORIES = [
@@ -74,6 +78,10 @@ export default function CreateListingPage() {
     locationVillage: "",
     locationDistrict: "",
     locationState: "",
+    locationPincode: "",
+    latitude: 0,
+    longitude: 0,
+    address: "",
   });
 
   // Livestock state
@@ -97,6 +105,10 @@ export default function CreateListingPage() {
     locationVillage: "",
     locationDistrict: "",
     locationState: "",
+    locationPincode: "",
+    latitude: 0,
+    longitude: 0,
+    address: "",
   });
 
   // Land state
@@ -115,40 +127,174 @@ export default function CreateListingPage() {
     locationVillage: "",
     locationDistrict: "",
     locationState: "",
+    locationPincode: "",
+    latitude: 0,
+    longitude: 0,
+    address: "",
   });
 
-  const [error, setError] = useState(null);
+  // Track which images are uploaded files vs URLs
+  const [imageTypes, setImageTypes] = useState<("file" | "url" | null)[]>([null, null, null]);
+
+  const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   const handleLogout = () => {
     logout();
   };
 
-  const handleImageChange = (idx, url, type) => {
+  // Handle location changes
+  const handleLocationChange = (locationData: any) => {
+    const locationUpdate = {
+      locationVillage: locationData.village,
+      locationDistrict: locationData.district,
+      locationState: locationData.state,
+      locationPincode: locationData.pincode,
+      latitude: locationData.latitude,
+      longitude: locationData.longitude,
+      address: locationData.address,
+    };
+
+    if (activeTab === "crop") {
+      setCropFields(prev => ({ ...prev, ...locationUpdate }));
+    } else if (activeTab === "livestock") {
+      setLivestockFields(prev => ({ ...prev, ...locationUpdate }));
+    } else {
+      setLandFields(prev => ({ ...prev, ...locationUpdate }));
+    }
+  };
+
+  // Clear images when switching tabs
+  const clearImages = () => {
+    setCropFields(f => ({ ...f, images: ["", "", ""] }));
+    setLivestockFields(f => ({ ...f, images: ["", "", ""] }));
+    setLandFields(f => ({ ...f, images: ["", "", ""] }));
+    setImageTypes([null, null, null]);
+  };
+
+  const handleImageChange = async (idx: number, fileOrUrl: File | string, type: string) => {
+    let imageUrl = fileOrUrl;
+
+    if (fileOrUrl instanceof File) {
+      // Compress and convert file to base64
+      const compressImage = (file: File): Promise<string> => {
+        return new Promise((resolve) => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const img = new Image();
+          
+          img.onload = () => {
+            // Calculate new dimensions (max 800px width/height)
+            const maxSize = 800;
+            let { width, height } = img;
+            
+            if (width > height) {
+              if (width > maxSize) {
+                height = (height * maxSize) / width;
+                width = maxSize;
+              }
+            } else {
+              if (height > maxSize) {
+                width = (width * maxSize) / height;
+                height = maxSize;
+              }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Draw and compress
+            ctx?.drawImage(img, 0, 0, width, height);
+            
+            // Convert to base64 with quality 0.8 (80%)
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+            resolve(compressedBase64);
+          };
+          
+          img.src = URL.createObjectURL(file);
+        });
+      };
+      
+      try {
+        const compressedBase64 = await compressImage(fileOrUrl);
+        
+        // Update image type to "file"
+        setImageTypes(prev => prev.map((t, i) => i === idx ? "file" : t));
+        
+        if (type === "crop") {
+          setCropFields((f) => ({
+            ...f,
+            images: f.images.map((img, i) => (i === idx ? compressedBase64 : img)),
+          }));
+        } else if (type === "livestock") {
+          setLivestockFields((f) => ({
+            ...f,
+            images: f.images.map((img, i) => (i === idx ? compressedBase64 : img)),
+          }));
+      } else {
+          setLandFields((f) => ({
+            ...f,
+            images: f.images.map((img, i) => (i === idx ? compressedBase64 : img)),
+          }));
+        }
+      } catch (error) {
+        console.error('Error compressing image:', error);
+        // Fallback to original method if compression fails
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const base64String = e.target?.result as string;
+          setImageTypes(prev => prev.map((t, i) => i === idx ? "file" : t));
+          
+          if (type === "crop") {
+            setCropFields((f) => ({
+              ...f,
+              images: f.images.map((img, i) => (i === idx ? base64String : img)),
+            }));
+          } else if (type === "livestock") {
+            setLivestockFields((f) => ({
+              ...f,
+              images: f.images.map((img, i) => (i === idx ? base64String : img)),
+            }));
+          } else {
+            setLandFields((f) => ({
+              ...f,
+              images: f.images.map((img, i) => (i === idx ? base64String : img)),
+            }));
+          }
+        };
+        reader.readAsDataURL(fileOrUrl);
+      }
+      return; // Exit early since we're handling it asynchronously
+    }
+
+    // Handle URL input (for pasting image URLs)
+    // Update image type to "url"
+    setImageTypes(prev => prev.map((t, i) => i === idx ? "url" : t));
+
     if (type === "crop") {
-      setCropFields(f => ({
+      setCropFields((f) => ({
         ...f,
-        images: f.images.map((img, i) => (i === idx ? url : img)),
+        images: f.images.map((img, i) => (i === idx ? (imageUrl as string) : img)),
       }));
     } else if (type === "livestock") {
-      setLivestockFields(f => ({
+      setLivestockFields((f) => ({
         ...f,
-        images: f.images.map((img, i) => (i === idx ? url : img)),
+        images: f.images.map((img, i) => (i === idx ? (imageUrl as string) : img)),
       }));
     } else {
-      setLandFields(f => ({
+      setLandFields((f) => ({
         ...f,
-        images: f.images.map((img, i) => (i === idx ? url : img)),
+        images: f.images.map((img, i) => (i === idx ? (imageUrl as string) : img)),
       }));
     }
   };
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
     if (!user || !user.id) {
-      setError("Authentication is required to create a listing.");
+      setError(() => "Authentication is required to create a listing.");
       return;
     }
 
@@ -182,8 +328,13 @@ export default function CreateListingPage() {
             harvestDate: cropFields.harvestDate ? new Date(cropFields.harvestDate) : undefined,
             location: {
               address,
+              village: cropFields.locationVillage,
               district: cropFields.locationDistrict,
               state: cropFields.locationState,
+              pincode: cropFields.locationPincode,
+              latitude: cropFields.latitude,
+              longitude: cropFields.longitude,
+              fullAddress: cropFields.address,
             },
             farmer: user.id,
           }),
@@ -219,8 +370,13 @@ export default function CreateListingPage() {
             certification: livestockFields.certification,
             location: {
               address,
+              village: livestockFields.locationVillage,
               district: livestockFields.locationDistrict,
               state: livestockFields.locationState,
+              pincode: livestockFields.locationPincode,
+              latitude: livestockFields.latitude,
+              longitude: livestockFields.longitude,
+              fullAddress: livestockFields.address,
             },
             farmer: user.id,
           }),
@@ -257,6 +413,10 @@ export default function CreateListingPage() {
               village: landFields.locationVillage,
               district: landFields.locationDistrict,
               state: landFields.locationState,
+              pincode: landFields.locationPincode,
+              latitude: landFields.latitude,
+              longitude: landFields.longitude,
+              fullAddress: landFields.address,
             },
             seller: user.id,
           }),
@@ -281,8 +441,9 @@ export default function CreateListingPage() {
         router.replace(`/listings?type=${activeTab}`);
       }, 2500);
 
-    } catch (err) {
-      setError(err?.message || "Listing creation failed.");
+    } catch (err: any) {
+      setError(() => err?.message || "Listing creation failed.");
+    } finally {
       setPending(false);
     }
   }
@@ -476,10 +637,15 @@ export default function CreateListingPage() {
                   >
                     AI Assistant
                   </Link>
+                  <Link
+                    href="/messages"
+                    className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Messages
+                  </Link>
                 </div>
               </div>
 
-              {/* User Menu */}
               <div className="hidden md:block">
                 <div className="ml-4 flex items-center md:ml-6 space-x-3">
                   {/* User Profile */}
@@ -590,7 +756,10 @@ export default function CreateListingPage() {
                   ? "bg-green-600 text-white shadow"
                   : "bg-white border text-green-700 border-green-200 hover:bg-green-50"
               }`}
-              onClick={() => setActiveTab("crop")}
+                              onClick={() => {
+                  setActiveTab("crop");
+                  clearImages();
+                }}
               type="button"
             >
               🌾 Crop Listing
@@ -601,7 +770,10 @@ export default function CreateListingPage() {
                   ? "bg-green-600 text-white shadow"
                   : "bg-white border text-green-700 border-green-200 hover:bg-green-50"
               }`}
-              onClick={() => setActiveTab("livestock")}
+                              onClick={() => {
+                  setActiveTab("livestock");
+                  clearImages();
+                }}
               type="button"
             >
               🐄 Livestock
@@ -612,7 +784,10 @@ export default function CreateListingPage() {
                   ? "bg-green-600 text-white shadow"
                   : "bg-white border text-green-700 border-green-200 hover:bg-green-50"
               }`}
-              onClick={() => setActiveTab("land")}
+                              onClick={() => {
+                  setActiveTab("land");
+                  clearImages();
+                }}
               type="button"
             >
               🏞️ Land/Plot
@@ -1011,131 +1186,182 @@ export default function CreateListingPage() {
               </>
             )}
 
-            {/* Common fields: Images, Description, Location */}
-            <div className="space-y-6">
-              <div>
-                <label className="block font-semibold mb-1">Images* (URLs)</label>
-                {[0, 1, 2].map((idx) => (
-                  <input
-                    className="input mt-1"
-                    type="url"
-                    key={idx}
-                    placeholder="Paste image URL or leave blank"
-                    value={
-                      activeTab === "crop" 
-                        ? cropFields.images[idx] || ""
-                        : activeTab === "livestock"
-                        ? livestockFields.images[idx] || ""
-                        : landFields.images[idx] || ""
-                    }
-                    onChange={e => handleImageChange(idx, e.target.value, activeTab)}
-                  />
-                ))}
+            {/* Images Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <CameraIcon className="h-5 w-5 text-green-600" />
+                <label className="block font-semibold text-gray-900">
+                  Images & Videos* (Upload files or paste URLs)
+                </label>
               </div>
-
-              <div>
-                <label className="block font-semibold mb-1">Description*</label>
-                <textarea
-                  className="input"
-                  value={
-                    activeTab === "crop" 
-                      ? cropFields.description
-                      : activeTab === "livestock"
-                      ? livestockFields.description
-                      : landFields.description
-                  }
-                  onChange={e => {
-                    if (activeTab === "crop") {
-                      setCropFields({ ...cropFields, description: e.target.value });
-                    } else if (activeTab === "livestock") {
-                      setLivestockFields({ ...livestockFields, description: e.target.value });
-                    } else {
-                      setLandFields({ ...landFields, description: e.target.value });
-                    }
-                  }}
-                  rows={3}
-                  placeholder={`Describe your ${activeTab}...`}
-                  required
-                />
+              
+              <div className="grid gap-4">
+                {[0, 1, 2].map((idx) => {
+                  const currentImage = activeTab === "crop"
+                    ? cropFields.images[idx]
+                    : activeTab === "livestock"
+                    ? livestockFields.images[idx]
+                    : landFields.images[idx];
+                  const imageType = imageTypes[idx];
+                  
+                  return (
+                    <div key={idx} className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300 hover:border-green-400 transition-colors">
+                      <div className="flex items-center gap-4">
+                        {/* Image Preview */}
+                        {currentImage && (
+                          <div className="relative">
+                            {currentImage?.match(/\.(jpeg|jpg|png|gif|webp)$/i) || currentImage?.startsWith('data:image/') ? (
+                              <img src={currentImage} alt="preview" className="w-20 h-20 object-cover rounded-lg border-2 border-gray-200" />
+                            ) : currentImage?.match(/\.(mp4|mov|webm|m4v)$/i) ? (
+                              <video src={currentImage} className="w-20 h-20 object-cover rounded-lg border-2 border-gray-200" controls />
+                            ) : null}
+                            
+                            {/* File type indicator */}
+                            {imageType && (
+                              <div className={`absolute -top-1 -right-1 px-1.5 py-0.5 text-xs rounded-full ${
+                                imageType === "file" ? "bg-green-500 text-white" : "bg-blue-500 text-white"
+                              }`}>
+                                {imageType === "file" ? "File" : "URL"}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        <div className="flex-1 space-y-3">
+                          {/* URL Input - Only show if no file is uploaded */}
+                          {imageType !== "file" && (
+                            <input
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                              type="url"
+                              placeholder="Paste image/video URL here..."
+                              value={currentImage || ""}
+                              onChange={e => handleImageChange(idx, e.target.value, activeTab)}
+                            />
+                          )}
+                          
+                          {/* Upload Controls */}
+                          <div className="flex gap-2">
+                            <label 
+                              htmlFor={`file-upload-${idx}`}
+                              className="cursor-pointer bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                            >
+                              <CameraIcon className="w-4 h-4" />
+                              {imageType === "file" ? "Change File" : "Upload File"}
+                            </label>
+                            <input
+                              id={`file-upload-${idx}`}
+                              type="file"
+                              accept="image/*,video/*"
+                              className="hidden"
+                              onChange={async e => {
+                                if (!e.target.files?.length) return;
+                                const file = e.target.files[0];
+                                await handleImageChange(idx, file, activeTab);
+                                e.target.value = "";
+                              }}
+                            />
+                            
+                            {/* Remove Button - Only show if image exists */}
+                            {currentImage && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // Clear the image
+                                  if (activeTab === "crop") {
+                                    setCropFields(f => ({
+                                      ...f,
+                                      images: f.images.map((img, i) => i === idx ? "" : img)
+                                    }));
+                                  } else if (activeTab === "livestock") {
+                                    setLivestockFields(f => ({
+                                      ...f,
+                                      images: f.images.map((img, i) => i === idx ? "" : img)
+                                    }));
+                                  } else {
+                                    setLandFields(f => ({
+                                      ...f,
+                                      images: f.images.map((img, i) => i === idx ? "" : img)
+                                    }));
+                                  }
+                                  // Reset image type
+                                  setImageTypes(prev => prev.map((t, i) => i === idx ? null : t));
+                                }}
+                                className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-medium transition-colors"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-
-              {/* Location fields */}
-              <div>
-                <h3 className="font-semibold mb-3">Location</h3>
-                <div className="grid md:grid-cols-3 gap-6">
+              
+              <div className="text-sm text-gray-500 bg-blue-50 p-3 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <DocumentTextIcon className="h-5 w-5 text-blue-600 mt-0.5" />
                   <div>
-                    <label className="block font-semibold mb-1">Village</label>
-                    <input
-                      className="input"
-                      value={
-                        activeTab === "crop" 
-                          ? cropFields.locationVillage
-                          : activeTab === "livestock"
-                          ? livestockFields.locationVillage
-                          : landFields.locationVillage
-                      }
-                      onChange={e => {
-                        if (activeTab === "crop") {
-                          setCropFields({ ...cropFields, locationVillage: e.target.value });
-                        } else if (activeTab === "livestock") {
-                          setLivestockFields({ ...livestockFields, locationVillage: e.target.value });
-                        } else {
-                          setLandFields({ ...landFields, locationVillage: e.target.value });
-                        }
-                      }}
-                      placeholder="Optional"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">District*</label>
-                    <input
-                      className="input"
-                      value={
-                        activeTab === "crop" 
-                          ? cropFields.locationDistrict
-                          : activeTab === "livestock"
-                          ? livestockFields.locationDistrict
-                          : landFields.locationDistrict
-                      }
-                      onChange={e => {
-                        if (activeTab === "crop") {
-                          setCropFields({ ...cropFields, locationDistrict: e.target.value });
-                        } else if (activeTab === "livestock") {
-                          setLivestockFields({ ...livestockFields, locationDistrict: e.target.value });
-                        } else {
-                          setLandFields({ ...landFields, locationDistrict: e.target.value });
-                        }
-                      }}
-                      required
-                      placeholder="E.g. Nashik"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">State*</label>
-                    <input
-                      className="input"
-                      value={
-                        activeTab === "crop" 
-                          ? cropFields.locationState
-                          : activeTab === "livestock"
-                          ? livestockFields.locationState
-                          : landFields.locationState
-                      }
-                      onChange={e => {
-                        if (activeTab === "crop") {
-                          setCropFields({ ...cropFields, locationState: e.target.value });
-                        } else if (activeTab === "livestock") {
-                          setLivestockFields({ ...livestockFields, locationState: e.target.value });
-                        } else {
-                          setLandFields({ ...landFields, locationState: e.target.value });
-                        }
-                      }}
-                      required
-                      placeholder="Maharashtra"
-                    />
+                    <p className="font-medium text-blue-900 mb-1">Upload Guidelines:</p>
+                    <ul className="text-blue-800 space-y-1 text-xs">
+                      <li>• Upload image/video files (converted to base64) or paste URLs</li>
+                      <li>• Maximum 3 files per listing</li>
+                      <li>• Supported formats: JPG, PNG, GIF, WebP, MP4, MOV, WebM</li>
+                      <li>• Images are automatically compressed for optimal performance</li>
+                    </ul>
                   </div>
                 </div>
               </div>
+            </div>
+            <div>
+              <label className="block font-semibold mb-1">Description*</label>
+              <textarea
+                className="input h-32"
+                value={ activeTab === "crop"
+                  ? cropFields.description
+                  : activeTab === "livestock"
+                  ? livestockFields.description
+                  : landFields.description }
+                onChange={e => {
+                  if (activeTab === "crop") {
+                    setCropFields({ ...cropFields, description: e.target.value });
+                  } else if (activeTab === "livestock") {
+                    setLivestockFields({ ...livestockFields, description: e.target.value });
+                  } else {
+                    setLandFields({ ...landFields, description: e.target.value });
+                  }
+                }}
+                required
+                placeholder="Provide detailed information about your listing"
+              ></textarea>
+
+              {/* Location Picker */}
+              <LocationPicker
+                onLocationChange={handleLocationChange}
+                initialLocation={{
+                  village: activeTab === "crop" 
+                    ? cropFields.locationVillage
+                    : activeTab === "livestock"
+                    ? livestockFields.locationVillage
+                    : landFields.locationVillage,
+                  district: activeTab === "crop" 
+                    ? cropFields.locationDistrict
+                    : activeTab === "livestock"
+                    ? livestockFields.locationDistrict
+                    : landFields.locationDistrict,
+                  state: activeTab === "crop" 
+                    ? cropFields.locationState
+                    : activeTab === "livestock"
+                    ? livestockFields.locationState
+                    : landFields.locationState,
+                  pincode: activeTab === "crop" 
+                    ? cropFields.locationPincode
+                    : activeTab === "livestock"
+                    ? livestockFields.locationPincode
+                    : landFields.locationPincode,
+                }}
+              />
             </div>
 
             <div className="flex justify-end mt-8">

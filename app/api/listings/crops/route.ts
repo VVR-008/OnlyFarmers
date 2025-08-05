@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import CropListing from "@/models/CropListings"; // ✅ Fixed import
+import CropListing from "@/models/CropListings"; 
 import User from "@/models/User";
 import { z } from "zod";
 
@@ -46,7 +46,19 @@ const cropListingSchema = z.object({
   farmer: z.string().min(1, "Farmer ID is required"),
   status: z.enum(["available", "sold", "reserved"]).default("available"),
   organicCertified: z.boolean().default(false),
-  harvestDate: z.preprocess((val) => val ? new Date(val) : undefined, z.date().optional())
+  harvestDate: z.preprocess(
+    (val) => {
+      if (
+        typeof val === "string" ||
+        typeof val === "number" ||
+        val instanceof Date
+      ) {
+        return new Date(val);
+      }
+      return undefined;
+    },
+    z.date().optional()
+  )
 });
 
 export async function GET(request: NextRequest) {
@@ -74,7 +86,7 @@ export async function GET(request: NextRequest) {
       // ✅ Return both keys for compatibility with order creation
       return NextResponse.json({ 
         listing, 
-        crop: listing  // Include both for compatibility
+        crop: listing  
       });
     }
 
@@ -116,7 +128,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       listings,
-      crops: listings, // ✅ Include both keys for compatibility
+      crops: listings, 
       pagination: {
         page,
         limit,

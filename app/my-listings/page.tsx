@@ -6,11 +6,11 @@ import { useAuth } from "@/lib/auth-context";
 import Navbar from "@/components/Navbar";
 import {
   TrashIcon,
-  PencilIcon,
   EyeIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { CurrencyRupeeIcon } from "@heroicons/react/24/solid";
+import Base64Image from "@/components/ui/base64-image";
 
 interface MyListing {
   _id: string;
@@ -191,10 +191,10 @@ export default function MyListingsPage() {
   const renderCropCard = (listing: MyListing) => (
     <div key={listing._id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
       <div className="aspect-video bg-gray-100 overflow-hidden rounded-t-lg">
-        <img
-          src={listing.images?.[0] || "/placeholder-crop.jpg"}
+        <Base64Image
+          src={listing.images?.[0]}
           alt={listing.title}
-          className="w-full h-full object-cover"
+          fallbackSrc="/placeholder-crop.jpg"
         />
       </div>
       <div className="p-4">
@@ -220,6 +220,7 @@ export default function MyListingsPage() {
             >
               <EyeIcon className="h-4 w-4" />
             </Link>
+
             <button
               onClick={() => handleDelete(listing._id, "crops")}
               disabled={deleting === listing._id}
@@ -240,10 +241,10 @@ export default function MyListingsPage() {
   const renderLivestockCard = (listing: MyListing) => (
     <div key={listing._id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
       <div className="aspect-video bg-gray-100 overflow-hidden rounded-t-lg">
-        <img
-          src={listing.images?.[0] || "/placeholder-livestock.jpg"}
+        <Base64Image
+          src={listing.images?.[0]}
           alt={listing.title}
-          className="w-full h-full object-cover"
+          fallbackSrc="/placeholder-livestock.jpg"
         />
       </div>
       <div className="p-4">
@@ -267,6 +268,7 @@ export default function MyListingsPage() {
             >
               <EyeIcon className="h-4 w-4" />
             </Link>
+
             <button
               onClick={() => handleDelete(listing._id, "livestocks")}
               disabled={deleting === listing._id}
@@ -287,10 +289,10 @@ export default function MyListingsPage() {
   const renderLandCard = (listing: MyListing) => (
     <div key={listing._id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
       <div className="aspect-video bg-gray-100 overflow-hidden rounded-t-lg">
-        <img
-          src={listing.images?.[0] || "/placeholder-land.jpg"}
+        <Base64Image
+          src={listing.images?.[0]}
           alt={listing.title}
-          className="w-full h-full object-cover"
+          fallbackSrc="/placeholder-land.jpg"
         />
       </div>
       <div className="p-4">
@@ -318,6 +320,7 @@ export default function MyListingsPage() {
             >
               <EyeIcon className="h-4 w-4" />
             </Link>
+
             <button
               onClick={() => handleDelete(listing._id, "lands")}
               disabled={deleting === listing._id}

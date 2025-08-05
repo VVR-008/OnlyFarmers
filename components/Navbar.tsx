@@ -13,6 +13,8 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
+import OrderNotifications from "./OrderNotifications";
+import MessageNotifications from "./MessageNotifications";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -40,7 +42,7 @@ export default function Navbar() {
                   />
                 </svg>
               </div>
-              <span className="ml-2 text-lg font-bold text-gray-900">OnlyFarmers</span>
+              <span className="ml-2 text-lg font-bold text-gray-900">OnlyFarmers.in</span>
             </div>
           </div>
 
@@ -67,17 +69,18 @@ export default function Navbar() {
                   My Listings
                 </Link>
               )}
-              <Link
-                href="/create-listing"
-                className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-              >
-                Create Listing
-              </Link>
+              
               <Link
                 href="/chat"
                 className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
               >
                 AI Assistant
+              </Link>
+              <Link
+                href="/messages"
+                className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+              >
+                Messages
               </Link>
             </div>
           </div>
@@ -86,6 +89,10 @@ export default function Navbar() {
           {user && (
             <div className="hidden md:block">
               <div className="ml-4 flex items-center md:ml-6 space-x-3">
+                {/* Notifications */}
+                <MessageNotifications />
+                <OrderNotifications />
+                
                 <div className="flex items-center space-x-2">
                   <div className="text-right">
                     <p className="text-sm font-medium text-gray-900">{user?.name}</p>
@@ -152,6 +159,12 @@ export default function Navbar() {
             >
               AI Assistant
             </Link>
+            <Link
+              href="/messages"
+              className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 block px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Messages
+            </Link>
           </div>
           {user && (
             <div className="pt-4 pb-3 border-t border-gray-200">
@@ -163,6 +176,11 @@ export default function Navbar() {
                 </div>
               </div>
               <div className="mt-3 px-2 space-y-1">
+                {/* Mobile Notifications */}
+                <div className="flex items-center justify-center space-x-4 mb-3">
+                  <MessageNotifications />
+                  <OrderNotifications />
+                </div>
                 <button
                   onClick={handleLogout}
                   className="flex items-center w-full px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"

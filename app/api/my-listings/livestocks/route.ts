@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import LivestockListing from "@/models/LivestockListings";
-
+export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
     
     const { searchParams } = new URL(request.url);
-    const farmerId = request.nextUrl.searchParams.get("farmer._id"); // ✅ Changed to farmer._id
+    const farmerId = request.nextUrl.searchParams.get("farmer._id");
     
     console.log("🐄 Fetching livestock for farmer._id:", farmerId);
     

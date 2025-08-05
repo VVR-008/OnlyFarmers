@@ -13,6 +13,7 @@ const querySchema = z.object({
   page: z.string().optional(),
   limit: z.string().optional(),
   id: z.string().optional(),
+  status: z.string().optional(), // Added status property
 });
 
 const landSchema = z.object({

@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { notFound, useRouter } from "next/navigation";
-import { CurrencyRupeeIcon, MapPinIcon, UserIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { CurrencyRupeeIcon, MapPinIcon, UserIcon, TrashIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import Base64Image from "@/components/ui/base64-image";
+import LocationDisplay from "@/components/ui/location-display";
 
 export default function LivestockDetailPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
@@ -12,6 +14,7 @@ export default function LivestockDetailPage({ params }: { params: { id: string }
   const [livestock, setLivestock] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [contacting, setContacting] = useState(false);
 
   useEffect(() => {
     fetchLivestockData();
@@ -61,6 +64,63 @@ export default function LivestockDetailPage({ params }: { params: { id: string }
       alert("Failed to delete listing. Please try again.");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleContactSeller = async () => {
+    if (!user) {
+      alert("Please log in to contact the seller");
+      return;
+    }
+
+    setContacting(true);
+    try {
+      const farmerId = typeof livestock.farmer === 'object' ? livestock.farmer._id : livestock.farmer;
+      
+      const response = await fetch("/api/conversations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": user.id,
+        },
+        body: JSON.stringify({
+          otherUserId: farmerId,
+          listingId: livestock._id,
+          listingType: 'livestock',
+          initialMessage: `Hi! I'm interested in your ${livestock.title} listing. Can you tell me more about it?`
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        router.push(`/messages?conversation=${data.conversationId}`);
+      } else {
+        const error = await response.json();
+        if (error.message === "Conversation already exists") {
+          // Find existing conversation and redirect to it
+          const conversationsResponse = await fetch("/api/conversations", {
+            headers: {
+              "x-user-id": user.id,
+            },
+          });
+          if (conversationsResponse.ok) {
+            const conversationsData = await conversationsResponse.json();
+            const existingConv = conversationsData.conversations.find(
+              (conv: any) => conv.listingId?._id === livestock._id
+            );
+            if (existingConv) {
+              router.push(`/messages?conversation=${existingConv._id}`);
+              return;
+            }
+          }
+        }
+        alert("Failed to start conversation. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error contacting seller:", error);
+      alert("Failed to contact seller. Please try again.");
+    } finally {
+      setContacting(false);
     }
   };
 
@@ -125,10 +185,11 @@ export default function LivestockDetailPage({ params }: { params: { id: string }
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
               {livestock.images.map((img: string, i: number) => (
                 <div key={i} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                  <img
+                  <Base64Image
                     src={img}
                     alt={`${livestock.title} - Image ${i + 1}`}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+                    fallbackSrc="/placeholder-livestock.jpg"
+                    className="hover:scale-105 transition-transform duration-200"
                   />
                 </div>
               ))}
@@ -220,6 +281,26 @@ export default function LivestockDetailPage({ params }: { params: { id: string }
               {livestock.description}
             </div>
 
+            {/* Enhanced Location Display */}
+            {livestock.location && (
+              <LocationDisplay
+                location={{
+                  latitude: livestock.location.latitude || 0,
+                  longitude: livestock.location.longitude || 0,
+                  address: livestock.location.fullAddress || livestock.location.address || "",
+                  village: livestock.location.village || "",
+                  district: livestock.location.district || "",
+                  state: livestock.location.state || "",
+                  pincode: livestock.location.pincode || "",
+                }}
+                farmerName={livestock.farmer?.name}
+                farmerPhone={livestock.farmer?.phone}
+                farmerEmail={livestock.farmer?.email}
+                className="mb-6"
+                isBuyerView={!isOwner && user?.role === "buyer"}
+              />
+            )}
+
             {livestock.certification && (
               <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h3 className="font-semibold text-blue-900 mb-2">Certification & Documents</h3>
@@ -249,12 +330,22 @@ export default function LivestockDetailPage({ params }: { params: { id: string }
                 Back to Livestock
               </Link>
               {livestock.status === "available" && !isOwner && (
-                <Link
-                  href={`/orders/create?listing=${livestock._id}&type=livestock`}
-                  className="bg-green-600 text-white px-6 py-2 rounded shadow hover:bg-green-700 font-bold"
-                >
-                  Contact Farmer / Make Offer
-                </Link>
+                <>
+                  <button
+                    onClick={handleContactSeller}
+                    disabled={contacting}
+                    className="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700 font-bold disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                    {contacting ? "Starting Chat..." : "Contact Seller"}
+                  </button>
+                  <Link
+                    href={`/orders/create?listing=${livestock._id}&type=livestock`}
+                    className="bg-green-600 text-white px-6 py-2 rounded shadow hover:bg-green-700 font-bold"
+                  >
+                    Make Offer
+                  </Link>
+                </>
               )}
             </div>
           </div>

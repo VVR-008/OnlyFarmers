@@ -9,6 +9,9 @@ interface DatabaseConfig {
 }
 
 class MongoDBConnection {
+  query(arg0: string, arg1: string, arg2: { type: string; search: string; location: string; page: number; limit: number }) {
+    throw new Error("Method not implemented.")
+  }
   private config: DatabaseConfig
   private static instance: MongoDBConnection
 

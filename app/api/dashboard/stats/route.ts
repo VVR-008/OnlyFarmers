@@ -4,13 +4,13 @@ import Order from "@/models/Order";
 import CropListing from "@/models/CropListings";
 import LivestockListing from "@/models/LivestockListings";
 import LandListing from "@/models/LandListings";
-
+export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
     
     const { searchParams } = new URL(request.url);
-    const farmerId = searchParams.get("farmerId");
+    const farmerId = request.nextUrl.searchParams.get("farmerId");
     
     if (!farmerId) {
       return NextResponse.json({ error: "Farmer ID is required" }, { status: 400 });

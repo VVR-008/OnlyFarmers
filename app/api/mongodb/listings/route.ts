@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
 import type { CropListing } from "@/lib/mongodb/schemas"
+import { connect } from "net"
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get("sortBy") || "createdAt"
     const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1
 
-    const db = await connectToDatabase()
+    const db = await connectToDB()
     const collection = db.collection("cropListings")
 
     // Build aggregation pipeline
@@ -179,3 +180,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Failed to create listing" }, { status: 500 })
   }
 }
+function connectToDB() {
+  throw new Error("Function not implemented.")
+}
+

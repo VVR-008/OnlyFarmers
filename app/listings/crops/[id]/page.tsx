@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { notFound, useRouter } from "next/navigation";
-import { CurrencyRupeeIcon, MapPinIcon, UserIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { CurrencyRupeeIcon, MapPinIcon, UserIcon, TrashIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import Base64Image from "@/components/ui/base64-image";
+import LocationDisplay from "@/components/ui/location-display";
 
 export default function CropDetailPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
@@ -12,6 +14,7 @@ export default function CropDetailPage({ params }: { params: { id: string } }) {
   const [crop, setCrop] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [contacting, setContacting] = useState(false);
 
   useEffect(() => {
     fetchCropData();
@@ -78,6 +81,63 @@ export default function CropDetailPage({ params }: { params: { id: string } }) {
     }
   };
 
+  const handleContactSeller = async () => {
+    if (!user) {
+      alert("Please log in to contact the seller");
+      return;
+    }
+
+    setContacting(true);
+    try {
+      const farmerId = typeof crop.farmer === 'object' ? crop.farmer._id : crop.farmer;
+      
+      const response = await fetch("/api/conversations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": user.id,
+        },
+        body: JSON.stringify({
+          otherUserId: farmerId,
+          listingId: crop._id,
+          listingType: 'crop',
+          initialMessage: `Hi! I'm interested in your ${crop.cropName} listing. Can you tell me more about it?`
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        router.push(`/messages?conversation=${data.conversationId}`);
+      } else {
+        const error = await response.json();
+        if (error.message === "Conversation already exists") {
+          // Find existing conversation and redirect to it
+          const conversationsResponse = await fetch("/api/conversations", {
+            headers: {
+              "x-user-id": user.id,
+            },
+          });
+          if (conversationsResponse.ok) {
+            const conversationsData = await conversationsResponse.json();
+            const existingConv = conversationsData.conversations.find(
+              (conv: any) => conv.listingId?._id === crop._id
+            );
+            if (existingConv) {
+              router.push(`/messages?conversation=${existingConv._id}`);
+              return;
+            }
+          }
+        }
+        alert("Failed to start conversation. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error contacting seller:", error);
+      alert("Failed to contact seller. Please try again.");
+    } finally {
+      setContacting(false);
+    }
+  };
+
   const formatGrade = (grade: string) => {
     if (grade === "Premium") return "Premium";
     return `Grade ${grade}`;
@@ -111,10 +171,11 @@ export default function CropDetailPage({ params }: { params: { id: string } }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
               {crop.images.map((img: string, i: number) => (
                 <div key={i} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                  <img
+                  <Base64Image
                     src={img}
                     alt={`${crop.cropName} - Image ${i + 1}`}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+                    fallbackSrc="/placeholder-crop.jpg"
+                    className="hover:scale-105 transition-transform duration-200"
                   />
                 </div>
               ))}
@@ -165,6 +226,26 @@ export default function CropDetailPage({ params }: { params: { id: string } }) {
               {crop.description}
             </div>
 
+            {/* Location Display */}
+            {crop.location && (
+              <LocationDisplay
+                location={{
+                  latitude: crop.location.latitude || 0,
+                  longitude: crop.location.longitude || 0,
+                  address: crop.location.fullAddress || crop.location.address || "",
+                  village: crop.location.village || "",
+                  district: crop.location.district || "",
+                  state: crop.location.state || "",
+                  pincode: crop.location.pincode || "",
+                }}
+                farmerName={crop.farmer?.name}
+                farmerPhone={crop.farmer?.phone}
+                farmerEmail={crop.farmer?.email}
+                className="mb-6"
+                isBuyerView={!isOwner && user?.role === "buyer"}
+              />
+            )}
+
             {crop.farmer && (
               <div className="mt-6 bg-gray-50 border rounded px-4 py-3 flex items-center gap-3 text-gray-700">
                 <UserIcon className="h-6 w-6 text-green-600" />
@@ -186,12 +267,22 @@ export default function CropDetailPage({ params }: { params: { id: string } }) {
                 Back to Crops
               </Link>
               {crop.status === "available" && !isOwner && (
-                <Link
-                  href={`/orders/create?listing=${crop._id}&type=crop`}
-                  className="bg-green-600 text-white px-6 py-2 rounded shadow hover:bg-green-700 font-bold"
-                >
-                  Buy Now / Contact Farmer
-                </Link>
+                <>
+                  <button
+                    onClick={handleContactSeller}
+                    disabled={contacting}
+                    className="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700 font-bold disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                    {contacting ? "Starting Chat..." : "Contact Seller"}
+                  </button>
+                  <Link
+                    href={`/orders/create?listing=${crop._id}&type=crop`}
+                    className="bg-green-600 text-white px-6 py-2 rounded shadow hover:bg-green-700 font-bold"
+                  >
+                    Buy Now
+                  </Link>
+                </>
               )}
             </div>
           </div>

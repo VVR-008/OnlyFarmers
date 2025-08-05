@@ -134,7 +134,7 @@ npm run format
 ## 📁 Project Structure
 
 \`\`\`
-onlyfarmers-marketplace/
+onyfarmers-marketplace/
 ├── app/                    # Next.js 14 App Router
 │   ├── (auth)/            # Auth route group
 │   ├── api/               # API routes

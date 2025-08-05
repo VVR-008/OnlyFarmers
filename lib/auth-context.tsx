@@ -48,6 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = async () => {
     try {
       const token = Cookies.get("token")
+      console.log("Auth check - Token:", token ? "exists" : "missing")
+      
       if (!token) {
         setLoading(false)
         return
@@ -57,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { Authorization: `Bearer ${token}` },
       })
 
+      console.log("Auth check - User data:", response.data.user)
       setUser(response.data.user)
     } catch (error) {
       console.error("Auth check failed:", error)
@@ -75,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { token, user } = response.data
 
-      Cookies.set("token", token, { expires: 7, secure: true, sameSite: "strict" })
+      Cookies.set("token", token, { expires: 7, secure: process.env.NODE_ENV === 'production', sameSite: "strict" })
       setUser(user)
 
       toast.success("Login successful!")
@@ -93,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { token, user } = response.data
 
-      Cookies.set("token", token, { expires: 7, secure: true, sameSite: "strict" })
+      Cookies.set("token", token, { expires: 7, secure: process.env.NODE_ENV === 'production', sameSite: "strict" })
       setUser(user)
 
       toast.success("Registration successful!")

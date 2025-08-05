@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { notFound, useRouter } from "next/navigation";
-import { CurrencyRupeeIcon, MapPinIcon, UserIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { CurrencyRupeeIcon, MapPinIcon, UserIcon, TrashIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import Base64Image from "@/components/ui/base64-image";
+import LocationDisplay from "@/components/ui/location-display";
 
 export default function LandDetailPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
@@ -12,6 +14,7 @@ export default function LandDetailPage({ params }: { params: { id: string } }) {
   const [land, setLand] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [contacting, setContacting] = useState(false);
 
   useEffect(() => {
     fetchLandData();
@@ -93,6 +96,63 @@ export default function LandDetailPage({ params }: { params: { id: string } }) {
     }
   };
 
+  const handleContactSeller = async () => {
+    if (!user) {
+      alert("Please log in to contact the seller");
+      return;
+    }
+
+    setContacting(true);
+    try {
+      const sellerId = typeof land.seller === 'object' ? land.seller._id : land.seller;
+      
+      const response = await fetch("/api/conversations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": user.id,
+        },
+        body: JSON.stringify({
+          otherUserId: sellerId,
+          listingId: land._id,
+          listingType: 'land',
+          initialMessage: `Hi! I'm interested in your ${land.title} listing. Can you tell me more about it?`
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        router.push(`/messages?conversation=${data.conversationId}`);
+      } else {
+        const error = await response.json();
+        if (error.message === "Conversation already exists") {
+          // Find existing conversation and redirect to it
+          const conversationsResponse = await fetch("/api/conversations", {
+            headers: {
+              "x-user-id": user.id,
+            },
+          });
+          if (conversationsResponse.ok) {
+            const conversationsData = await conversationsResponse.json();
+            const existingConv = conversationsData.conversations.find(
+              (conv: any) => conv.listingId?._id === land._id
+            );
+            if (existingConv) {
+              router.push(`/messages?conversation=${existingConv._id}`);
+              return;
+            }
+          }
+        }
+        alert("Failed to start conversation. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error contacting seller:", error);
+      alert("Failed to contact seller. Please try again.");
+    } finally {
+      setContacting(false);
+    }
+  };
+
   return (
     <div className="bg-gray-50 min-h-screen pb-12">
       <div className="max-w-4xl mx-auto px-4 pt-8">
@@ -117,10 +177,11 @@ export default function LandDetailPage({ params }: { params: { id: string } }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
               {land.images.map((img: string, i: number) => (
                 <div key={i} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                  <img
+                  <Base64Image
                     src={img}
                     alt={`${land.title} - Image ${i + 1}`}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+                    fallbackSrc="/placeholder-land.jpg"
+                    className="hover:scale-105 transition-transform duration-200"
                   />
                 </div>
               ))}
@@ -177,12 +238,25 @@ export default function LandDetailPage({ params }: { params: { id: string } }) {
               </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-6 mb-4 border-t pt-4 text-sm">
-              {land.location?.village && <div><span className="text-gray-500">Village:</span> {land.location.village}</div>}
-              {land.location?.district && <div><span className="text-gray-500">District:</span> {land.location.district}</div>}
-              {land.location?.state && <div><span className="text-gray-500">State:</span> {land.location.state}</div>}
-              {/* You may want to display more location/geocoordinate fields */}
-            </div>
+            {/* Enhanced Location Display */}
+            {land.location && (
+              <LocationDisplay
+                location={{
+                  latitude: land.location.latitude || 0,
+                  longitude: land.location.longitude || 0,
+                  address: land.location.fullAddress || land.location.address || "",
+                  village: land.location.village || "",
+                  district: land.location.district || "",
+                  state: land.location.state || "",
+                  pincode: land.location.pincode || "",
+                }}
+                farmerName={land.seller?.name}
+                farmerPhone={land.seller?.phone}
+                farmerEmail={land.seller?.email}
+                className="mb-6"
+                isBuyerView={!isOwner && user?.role === "buyer"}
+              />
+            )}
 
             {land.seller && (
               <div className="mt-6 bg-gray-50 border rounded px-4 py-2 flex items-center gap-3 text-gray-700">
@@ -198,12 +272,22 @@ export default function LandDetailPage({ params }: { params: { id: string } }) {
               <Link href="/listings?type=lands" className="bg-gray-100 text-gray-700 px-4 py-2 rounded shadow hover:bg-gray-200 font-medium">Back to All Land</Link>
 
               {land.status === "available" && !isOwner && (
-                <Link
-                  href={`/orders/create?listing=${land._id}&type=land`}
-                  className="bg-green-600 text-white px-6 py-2 rounded shadow hover:bg-green-700 font-bold"
-                >
-                  Express Interest / Contact Seller
-                </Link>
+                <>
+                  <button
+                    onClick={handleContactSeller}
+                    disabled={contacting}
+                    className="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700 font-bold disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                    {contacting ? "Starting Chat..." : "Contact Seller"}
+                  </button>
+                  <Link
+                    href={`/orders/create?listing=${land._id}&type=land`}
+                    className="bg-green-600 text-white px-6 py-2 rounded shadow hover:bg-green-700 font-bold"
+                  >
+                    Express Interest
+                  </Link>
+                </>
               )}
             </div>
           </div>

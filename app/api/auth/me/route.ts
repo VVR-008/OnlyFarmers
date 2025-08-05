@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import dbConnect from "@/lib/db"
 import User from "@/models/User"
-
+export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await dbConnect()

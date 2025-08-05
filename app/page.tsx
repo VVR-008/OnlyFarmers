@@ -14,7 +14,7 @@ const heroImages = [
 const testimonials = [
   {
     name: "Sunil Sharma",
-    feedback: "OnlyFarmers helped me sell my wheat crop directly to buyers at a fair price—payment was super fast!",
+    feedback: "OnlyFarmers.in helped me sell my wheat crop directly to buyers at a fair price—payment was super fast!",
     avatar: "https://randomuser.me/api/portraits/men/29.jpg",
   },
   {
@@ -108,8 +108,8 @@ export default function LandingPage() {
           {/* Left/brand */}
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center gap-2 select-none">
-              <img src="/logo.svg" alt="OnlyFarmers Logo" className="h-8 w-8 object-contain" onError={e=>{(e.target as any).style.display='none'}} />
-              <span className="font-extrabold text-lg md:text-xl text-green-700 tracking-tight drop-shadow">OnlyFarmers</span>
+              <img src="/logo.svg" alt="OnlyFarmers.in Logo" className="h-8 w-8 object-contain" onError={e=>{(e.target as any).style.display='none'}} />
+                <span className="font-extrabold text-lg md:text-xl text-green-700 tracking-tight drop-shadow">OnlyFarmers.in</span>
             </Link>
           </div>
           {/* Nav (desktop) */}

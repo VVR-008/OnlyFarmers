@@ -7,7 +7,7 @@ export interface User {
   name: string
   email: string
   passwordHash: string
-  role: "farmer" | "buyer" | "admin" | "expert"
+  role: "farmer" | "buyer" 
   phone: string
   location: {
     address: string

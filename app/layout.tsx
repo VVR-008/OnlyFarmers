@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: "OnlyFarmers.in - Agricultural Marketplace",
   description: "Connect farmers and buyers across India. Buy and sell crops, equipment, and agricultural products.",
   keywords: "agriculture, farming, marketplace, crops, farmers, buyers, India",
-  authors: [{ name: "OnlyFarmers Team" }],
+  authors: [{ name: "OnlyFarmers.in Team" }],
   creator: "OnlyFarmers.in",
   publisher: "OnlyFarmers.in",
   formatDetection: {

@@ -10,7 +10,7 @@ export default function Footer() {
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <Leaf className="h-8 w-8 text-green-500" />
-              <span className="text-xl font-bold">OnlyFarmers</span>
+              <span className="text-xl font-bold">OnlyFarmers.in</span>
             </div>
             <p className="text-gray-400">
               Connecting farmers and buyers across India for transparent and profitable agricultural trade.

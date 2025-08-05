@@ -1,6 +1,6 @@
 {
-  "name": "OnlyFarmers - Agricultural Marketplace",
-  "short_name": "OnlyFarmers",
+  "name": "OnlyFarmers.in - Agricultural Marketplace",
+"short_name": "OnlyFarmers.in",
   "description": "Connect farmers and buyers across India",
   "start_url": "/",
   "display": "standalone",

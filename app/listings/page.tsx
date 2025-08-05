@@ -6,6 +6,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { MagnifyingGlassIcon, FunnelIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { CurrencyRupeeIcon } from "@heroicons/react/24/solid";
+import Base64Image from "@/components/ui/base64-image";
 
 interface Listing {
   _id: string;
@@ -171,10 +172,11 @@ export default function ListingsPage() {
       className="block bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200 overflow-hidden"
     >
       <div className="aspect-video bg-gray-100 overflow-hidden">
-        <img
-          src={listing.images?.[0] || "/placeholder-crop.jpg"}
+        <Base64Image
+          src={listing.images?.[0]}
           alt={listing.title}
-          className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+          fallbackSrc="/placeholder-crop.jpg"
+          className="hover:scale-105 transition-transform duration-200"
         />
       </div>
       <div className="p-4">
@@ -206,10 +208,11 @@ export default function ListingsPage() {
       className="block bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200 overflow-hidden"
     >
       <div className="aspect-video bg-gray-100 overflow-hidden">
-        <img
-          src={listing.images?.[0] || "/placeholder-livestock.jpg"}
+        <Base64Image
+          src={listing.images?.[0]}
           alt={listing.title}
-          className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+          fallbackSrc="/placeholder-livestock.jpg"
+          className="hover:scale-105 transition-transform duration-200"
         />
       </div>
       <div className="p-4">
@@ -245,10 +248,11 @@ export default function ListingsPage() {
       className="block bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200 overflow-hidden"
     >
       <div className="aspect-video bg-gray-100 overflow-hidden">
-        <img
-          src={listing.images?.[0] || "/placeholder-land.jpg"}
+        <Base64Image
+          src={listing.images?.[0]}
           alt={listing.title}
-          className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+          fallbackSrc="/placeholder-land.jpg"
+          className="hover:scale-105 transition-transform duration-200"
         />
       </div>
       <div className="p-4">

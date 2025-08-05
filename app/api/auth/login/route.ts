@@ -22,13 +22,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Invalid email or password" }, { status: 401 })
     }
 
-    // Check password
     const isPasswordValid = await user.comparePassword(password)
     if (!isPasswordValid) {
       return NextResponse.json({ message: "Invalid email or password" }, { status: 401 })
     }
 
-    // Generate JWT token
     const token = jwt.sign({ userId: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET!, {
       expiresIn: "7d",
     })
